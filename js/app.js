@@ -107,3 +107,4 @@ if(x.id=='cf'&&x.files[0]){const f=x.files[0];try{cover=await compress(f);$('#cv
 document.addEventListener('keydown',e=>{if(e.key=='Enter'&&e.target.id=='nn')$('[data-a=nok]').click()});
 addEventListener('hashchange',()=>{ui={panel:null,msg:null};route()});
 (async()=>{try{remind=(await DB.getMeta('settings'))?.remind??14}catch(e){}route()})();
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
