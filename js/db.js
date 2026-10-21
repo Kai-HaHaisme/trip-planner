@@ -8,9 +8,9 @@ const CATS=['證件物品','電子設備','穿搭衣物','日常用品','藥品�
 const uid=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const blank=(name,start,end)=>({id:uid('t'),name,start,end,description:'',cover:null,destination:{name:'',lat:null,lng:null},baseCurrency:'TWD',
 budget:{total:0,byCategory:{}},members:[{id:uid('m'),name:'我'}],items:[],rates:{},
-packingCategories:CATS.map((n,i)=>({id:'c'+(i+1),name:n,fixed:i==5})),packing:[],wishlist:[],meta:{createdAt:Date.now(),modifiedAt:Date.now(),lastBackupAt:null}});
+packingCategories:CATS.map((n,i)=>({id:'c'+(i+1),name:n,fixed:i==5})),packing:[],wishlist:[],meta:{createdAt:Date.now(),modifiedAt:Date.now(),sharedAt:Date.now(),lastBackupAt:null}});
 return{uid,blank,all:()=>tx('trips','readonly',s=>s.getAll()),get:id=>tx('trips','readonly',s=>s.get(id)),
-put:(t,touch=true)=>{if(touch)t.meta.modifiedAt=Date.now();return tx('trips','readwrite',s=>s.put(t))},
+put:(t,touch=true)=>{if(touch){t.meta.modifiedAt=Date.now();if(touch!=='p')t.meta.sharedAt=Date.now()}return tx('trips','readwrite',s=>s.put(t))},
 del:id=>open().then(db=>new Promise((ok,no)=>{const t=db.transaction(['trips','photos'],'readwrite'),ps=t.objectStore('photos');t.objectStore('trips').delete(id);const r=ps.getAll();r.onsuccess=()=>r.result.filter(p=>p.tripId==id).forEach(p=>ps.delete(p.id));t.oncomplete=()=>ok();t.onerror=()=>no(t.error)})),
 clearPhotos:id=>open().then(db=>new Promise((ok,no)=>{const t=db.transaction('photos','readwrite'),ps=t.objectStore('photos'),r=ps.getAll();r.onsuccess=()=>r.result.filter(p=>p.tripId==id).forEach(p=>ps.delete(p.id));t.oncomplete=()=>ok();t.onerror=()=>no(t.error)})),
 putPhoto:p=>tx('photos','readwrite',s=>s.put(p)),getPhoto:id=>tx('photos','readonly',s=>s.get(id)),delPhoto:id=>tx('photos','readwrite',s=>s.delete(id)),getMeta:k=>tx('meta','readonly',s=>s.get(k)),setMeta:(k,v)=>tx('meta','readwrite',s=>s.put(v,k))}})();
