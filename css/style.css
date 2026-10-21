@@ -87,9 +87,9 @@ th{font-weight:500;text-align:left;color:var(--sub);font-size:12px;border-bottom
 .wi .b{flex:1;min-width:0;overflow-wrap:anywhere}.wi .b small{display:block;color:var(--sub);font-size:13px;line-height:1.4}.wi.done .b>span{color:var(--sub);text-decoration:line-through}
 .wed{flex-basis:100%;display:grid;gap:8px}.wed .r{display:flex;gap:8px;justify-content:flex-end}
 .ic.hm{display:grid;grid-template-columns:1fr auto;gap:0 14px}.ic.hm>.icl{grid-column:1;min-width:0}.ic.hm>.ia,.ic.hm>.panel{grid-column:1/-1}.icl{min-width:0}
-.mapb{grid-column:2;grid-row:1;width:118px;height:118px;margin-top:22px;border:1px solid var(--line);background:var(--chip);padding:0;cursor:pointer;overflow:hidden;position:relative}.mapb .mi{width:100%;height:100%;pointer-events:none}
+.mapb{grid-column:2;grid-row:1;width:118px;height:118px;margin-top:22px;border:1px solid var(--line);background:var(--chip);padding:0;cursor:pointer;overflow:hidden;position:relative;z-index:0;isolation:isolate}.mapb .mi{width:100%;height:100%;pointer-events:none}
 @media (min-width:700px){.mapb{width:150px;height:150px}}
 .wx{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;padding:10px 2px;color:var(--sub);font-size:13px;border-bottom:1px solid var(--line)}.wx b{color:var(--ink);font-weight:500;font-size:15px}
 #mo{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column}#mo[hidden]{display:none}#mom{flex:1}
 .mob{display:flex;gap:8px;align-items:center;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}.mob span{flex:1;min-width:0;font-size:13px;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mob a{text-decoration:none}
-#fmap{height:240px;margin-top:10px;border:1px solid var(--line);cursor:crosshair}#fmap[hidden]{display:none}
+#fmap{height:240px;margin-top:10px;border:1px solid var(--line);cursor:crosshair;position:relative;z-index:0;isolation:isolate}#mom{position:relative;z-index:0;isolation:isolate}#fmap[hidden]{display:none}
