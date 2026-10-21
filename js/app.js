@@ -14,7 +14,7 @@ const needBackup=t=>remind>0&&t.meta.modifiedAt>(t.meta.lastBackupAt||0)&&(!t.me
 async function route(){const p=location.hash.slice(2).split('/');
 if(p[0]=='trip'){cur=await DB.get(p[1]);if(!cur){location.hash='#/';return}if(p[2]=='item'){nav(cur,'timeline');$('#main').innerHTML=formPage(cur,p[3],p[4]);formInit();scrollTo(0,0);return}
 const pg=PAGES.find(x=>x[0]==p[2])?p[2]:'overview';nav(cur,pg);
-$('#main').innerHTML=(pg=='overview'?overview(cur):pg=='timeline'?timelinePage(cur):pg=='expenses'?expensesPage(cur):pg=='packing'?packingPage(cur):pg=='wishlist'?wishlistPage(cur):stub(cur,pg));if(pg=='overview')daysUI();if(pg=='expenses')exInit();if(pg=='packing')pkRender();if(pg=='wishlist')wlRender();scrollTo(0,0)}
+$('#main').innerHTML=(pg=='overview'?overview(cur):pg=='timeline'?timelinePage(cur):pg=='expenses'?expensesPage(cur):pg=='packing'?packingPage(cur):pg=='wishlist'?wishlistPage(cur):stub(cur,pg));if(pg=='overview')daysUI();if(pg=='expenses')exInit();if(pg=='timeline')tlAfter();if(pg=='packing')pkRender();if(pg=='wishlist')wlRender();scrollTo(0,0)}
 else{cur=null;$('#side').hidden=true;$('#tabs').hidden=true;$('#top').innerHTML='<h1>旅遊規劃</h1>';$('#main').innerHTML=await tripsPage()}}
 function nav(t,pg){const l=PAGES.map(([k,n])=>`<a href="#/trip/${t.id}/${k}" class="${k==pg?'on':''}">${n}</a>`).join('');
 $('#side').hidden=false;$('#tabs').hidden=false;$('#side').innerHTML=`<a href="#/" style="padding-left:0">← 我的旅行</a><div class="tn">${esc(t.name)}</div><div class="mt" style="margin-bottom:12px">${fmt(t.start)} – ${fmt(t.end)}</div>${l}`;
@@ -59,7 +59,7 @@ for(const i of n.items)for(const p of i.photos||[]){if(p.data){const id=asNew?DB
 n.meta.lastBackupAt=Date.now();n.meta.modifiedAt=Math.min(n.meta.modifiedAt||0,n.meta.lastBackupAt);await DB.put(n,false);ui.panel=null;ui.msg={t:`已匯入「${esc(n.name)}」。`};route()}
 
 /* ---------- 總覽 ---------- */
-function overview(t){mem=t.members.map(m=>({...m}));cover=t.cover;pend=null;
+function overview(t){ovDest=null;mem=t.members.map(m=>({...m}));cover=t.cover;pend=null;
 const mems=()=>mem.map((m,i)=>`<div class="mem"><input value="${esc(m.name)}" data-i="${i}" aria-label="旅伴 ${i+1}"><span class="me">${i?'':'（我）'}</span>${i?`<button class="btn sm" data-a="rmm" data-i="${i}" type="button">移除</button>`:''}</div>`).join('');
 setTimeout(()=>{$('#cur').value=t.baseCurrency;memUI()});
 return`<h1 style="margin-top:14px">旅行總覽</h1><div class="cols"><div class="col2"><fieldset><legend>基本資訊</legend>
@@ -70,7 +70,7 @@ return`<h1 style="margin-top:14px">旅行總覽</h1><div class="cols"><div class
 <div class="g2"><label class="f">出發日期 *<input type="date" id="d1" value="${t.start}"></label><label class="f">結束日期 *<input type="date" id="d2" value="${t.end}"></label></div>
 <div class="days" id="days"></div><div class="err" id="e-date" hidden>結束日期不能早於出發日期</div>
 <label class="f">行程簡介<textarea id="desc">${esc(t.description)}</textarea></label></fieldset></div>
-<div class="col2"><fieldset><legend>目的地與幣別</legend><label class="f">目的地（用於天氣預報）<input id="dest" value="${esc(t.destination.name)}"></label><div class="hint">座標查詢與天氣將在階段 5 啟用，目前先記錄名稱。</div>
+<div class="col2"><fieldset><legend>目的地與幣別</legend><label class="f">目的地（用於天氣預報）</label><div style="display:flex;gap:8px"><input id="dest" value="${esc(t.destination.name)}" aria-label="目的地" style="margin:0"><button class="btn" type="button" data-g="dgeo">查詢座標</button></div><div class="hint" id="dgs">${t.destination.lat!=null?`已定位：${t.destination.lat.toFixed(3)}, ${t.destination.lng.toFixed(3)}。`:'尚未定位。'}當天行程沒有地點座標時，天氣以目的地為準。</div>
 <label class="f">主幣別<select id="cur"><option value="TWD">TWD 新台幣</option><option>JPY</option><option>USD</option><option>EUR</option><option>KRW</option></select></label></fieldset>
 <fieldset><legend>旅伴名單</legend><div id="mems">${mems()}</div><button class="btn sm" data-a="addm" type="button" style="margin-top:10px">＋ 新增旅伴</button><div class="hint" id="mh"></div><div class="err" id="e-mem" hidden>旅伴名稱不可空白或重複</div></fieldset></div></div>
 <div id="warn"></div><div class="bar"><button class="btn" data-a="rst">還原</button><button class="btn main" data-a="sv">儲存</button></div><div id="sm"></div>`}
@@ -87,7 +87,7 @@ $('#warn').innerHTML='';t.items.forEach(i=>{if(i.date&&(i.date<a||i.date>b)){i.d
 mem.forEach((m,i)=>m.name=nm[i]);const ids=new Set(mem.map(m=>m.id));
 t.items.forEach(i=>{if(i.split){if(!ids.has(i.split.payer))i.split.payer=mem[0].id;i.split.shares=(i.split.shares||[]).filter(s=>ids.has(s.member))}});
 if(t.baseCurrency!=$('#cur').value){t.rates={};t.ratesAt=0}
-Object.assign(t,{name,start:a,end:b,description:$('#desc').value,cover,baseCurrency:$('#cur').value,members:mem.map(m=>({...m}))});t.destination.name=$('#dest').value.trim();
+Object.assign(t,{name,start:a,end:b,description:$('#desc').value,cover,baseCurrency:$('#cur').value,members:mem.map(m=>({...m}))});{const dn=$('#dest').value.trim();if(ovDest)t.destination={name:dn,lat:ovDest.lat,lng:ovDest.lng};else if(dn!=t.destination.name)t.destination={name:dn,lat:null,lng:null}}
 await DB.put(t);nav(t,'overview');$('#sm').innerHTML='<div class="msg">已儲存。</div>';setTimeout(()=>$('#sm')&&($('#sm').innerHTML=''),2500)}
 async function compress(f,L=1600){const b=await createImageBitmap(f),s=Math.min(1,L/Math.max(b.width,b.height)),c=document.createElement('canvas');c.width=Math.round(b.width*s);c.height=Math.round(b.height*s);c.getContext('2d').drawImage(b,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.8)}
 
