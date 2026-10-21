@@ -14,7 +14,7 @@ const needBackup=t=>remind>0&&t.meta.modifiedAt>(t.meta.lastBackupAt||0)&&(!t.me
 async function route(){const p=location.hash.slice(2).split('/');
 if(p[0]=='trip'){cur=await DB.get(p[1]);if(!cur){location.hash='#/';return}if(p[2]=='item'){nav(cur,'timeline');$('#main').innerHTML=formPage(cur,p[3],p[4]);formInit();scrollTo(0,0);return}
 const pg=PAGES.find(x=>x[0]==p[2])?p[2]:'overview';nav(cur,pg);
-$('#main').innerHTML=(pg=='overview'?overview(cur):pg=='timeline'?timelinePage(cur):stub(cur,pg));if(pg=='overview')daysUI();scrollTo(0,0)}
+$('#main').innerHTML=(pg=='overview'?overview(cur):pg=='timeline'?timelinePage(cur):pg=='expenses'?expensesPage(cur):stub(cur,pg));if(pg=='overview')daysUI();if(pg=='expenses')exInit();scrollTo(0,0)}
 else{cur=null;$('#side').hidden=true;$('#tabs').hidden=true;$('#top').innerHTML='<h1>旅遊規劃</h1>';$('#main').innerHTML=await tripsPage()}}
 function nav(t,pg){const l=PAGES.map(([k,n])=>`<a href="#/trip/${t.id}/${k}" class="${k==pg?'on':''}">${n}</a>`).join('');
 $('#side').hidden=false;$('#tabs').hidden=false;$('#side').innerHTML=`<a href="#/" style="padding-left:0">← 我的旅行</a><div class="tn">${esc(t.name)}</div><div class="mt" style="margin-bottom:12px">${fmt(t.start)} – ${fmt(t.end)}</div>${l}`;
@@ -79,6 +79,7 @@ if(moved&&!ok){$('#warn').innerHTML=`<div class="panel w" style="margin-top:14px
 $('#warn').innerHTML='';t.items.forEach(i=>{if(i.date&&(i.date<a||i.date>b)){i.date=null;i.checkOut=null}});
 mem.forEach((m,i)=>m.name=nm[i]);const ids=new Set(mem.map(m=>m.id));
 t.items.forEach(i=>{if(i.split){if(!ids.has(i.split.payer))i.split.payer=mem[0].id;i.split.shares=(i.split.shares||[]).filter(s=>ids.has(s.member))}});
+if(t.baseCurrency!=$('#cur').value){t.rates={};t.ratesAt=0}
 Object.assign(t,{name,start:a,end:b,description:$('#desc').value,cover,baseCurrency:$('#cur').value,members:mem.map(m=>({...m}))});t.destination.name=$('#dest').value.trim();
 await DB.put(t);nav(t,'overview');$('#sm').innerHTML='<div class="msg">已儲存。</div>';setTimeout(()=>$('#sm')&&($('#sm').innerHTML=''),2500)}
 async function compress(f,L=1600){const b=await createImageBitmap(f),s=Math.min(1,L/Math.max(b.width,b.height)),c=document.createElement('canvas');c.width=Math.round(b.width*s);c.height=Math.round(b.height*s);c.getContext('2d').drawImage(b,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.8)}
