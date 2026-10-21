@@ -7,13 +7,14 @@ const agoDays=ts=>Math.floor((Date.now()-ts)/DAY),mb=n=>n<1?'不到 1 MB':n.toFi
 const stat=t=>{const T=todayStr();return T<t.start?[`${dd(t.start,T)} 天後出發`,1]:T<=t.end?['進行中',1]:['已結束',0]};
 let ui={panel:null,msg:null},remind=14,cur=null,mem=null,cover,pend=null;
 const PAGES=[['overview','總覽'],['timeline','時間軸'],['expenses','費用'],['packing','行李'],['wishlist','願望']];
-const tripMB=t=>new Blob([JSON.stringify(t)]).size/1048576,photoN=t=>t.items.reduce((a,i)=>a+(i.photos?.length||0),0);
+const tripMB=t=>(new Blob([JSON.stringify(t)]).size+t.items.reduce((a,i)=>a+(i.photos||[]).reduce((b,p)=>b+(p.bytes||0),0),0))/1048576,photoN=t=>t.items.reduce((a,i)=>a+(i.photos?.length||0),0);
 const needBackup=t=>remind>0&&t.meta.modifiedAt>(t.meta.lastBackupAt||0)&&(!t.meta.lastBackupAt||agoDays(t.meta.lastBackupAt)>=remind);
 
 /* ---------- 路由與導覽 ---------- */
 async function route(){const p=location.hash.slice(2).split('/');
-if(p[0]=='trip'){cur=await DB.get(p[1]);if(!cur){location.hash='#/';return}const pg=PAGES.find(x=>x[0]==p[2])?p[2]:'overview';nav(cur,pg);
-$('#main').innerHTML=(pg=='overview'?overview(cur):stub(cur,pg));if(pg=='overview')daysUI();scrollTo(0,0)}
+if(p[0]=='trip'){cur=await DB.get(p[1]);if(!cur){location.hash='#/';return}if(p[2]=='item'){nav(cur,'timeline');$('#main').innerHTML=formPage(cur,p[3],p[4]);formInit();scrollTo(0,0);return}
+const pg=PAGES.find(x=>x[0]==p[2])?p[2]:'overview';nav(cur,pg);
+$('#main').innerHTML=(pg=='overview'?overview(cur):pg=='timeline'?timelinePage(cur):stub(cur,pg));if(pg=='overview')daysUI();scrollTo(0,0)}
 else{cur=null;$('#side').hidden=true;$('#tabs').hidden=true;$('#top').innerHTML='<h1>旅遊規劃</h1>';$('#main').innerHTML=await tripsPage()}}
 function nav(t,pg){const l=PAGES.map(([k,n])=>`<a href="#/trip/${t.id}/${k}" class="${k==pg?'on':''}">${n}</a>`).join('');
 $('#side').hidden=false;$('#tabs').hidden=false;$('#side').innerHTML=`<a href="#/" style="padding-left:0">← 我的旅行</a><div class="tn">${esc(t.name)}</div><div class="mt" style="margin-bottom:12px">${fmt(t.start)} – ${fmt(t.end)}</div>${l}`;
@@ -40,7 +41,7 @@ const pe=ok=>{$('#st2').innerHTML=ok?'持久儲存：已啟用。':'持久儲存
 
 /* ---------- 匯出入 ---------- */
 function download(name,obj){const b=new Blob([JSON.stringify(obj)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2e3)}
-async function doExport(t,withPhotos,fn){const o=JSON.parse(JSON.stringify(t));if(!withPhotos)o.items.forEach(i=>i.photos=[]);
+async function doExport(t,withPhotos,fn){const o=JSON.parse(JSON.stringify(t));if(!withPhotos)o.items.forEach(i=>i.photos=[]);else for(const i of o.items)for(const p of i.photos||[]){const r=await DB.getPhoto(p.id);if(r)p.data=await new Promise(ok=>{const f=new FileReader();f.onload=()=>ok(f.result);f.readAsDataURL(r.blob)})}
 download(fn.replace(/[\\/:*?"<>|]/g,'_'),{app:'trip-planner',version:1,exportedAt:new Date().toISOString(),includesPhotos:withPhotos,trip:o});t.meta.lastBackupAt=Date.now();await DB.put(t,false)}
 function normalize(x){const b=DB.blank(x.name||'未命名',x.start,x.end);return{...b,...x,destination:{...b.destination,...x.destination},budget:{...b.budget,...x.budget},meta:{...b.meta,...x.meta},members:x.members?.length?x.members:b.members,
 packingCategories:x.packingCategories?.length?x.packingCategories:b.packingCategories}}
@@ -48,7 +49,7 @@ async function importObj(o){ui.msg=null;const t=o?.trip;
 if(!o||o.app!=='trip-planner'||!t||!t.name||!t.start||!t.end){ui.msg={e:1,t:'這不是旅遊規劃的匯出檔，無法匯入。'};return route()}
 if(o.version>1){ui.msg={e:1,t:'這個檔案來自較新版本，請先更新 App 再匯入。'};return route()}
 if(await DB.get(t.id)){ui.panel={k:'conf',o};return route()}await finishImport(t,false)}
-async function finishImport(t,asNew){const n=normalize(t);if(asNew){n.id=DB.uid('t')}n.meta.lastBackupAt=Date.now();n.meta.modifiedAt=Math.min(n.meta.modifiedAt||0,n.meta.lastBackupAt);await DB.put(n,false);ui.panel=null;ui.msg={t:`已匯入「${esc(n.name)}」。`};route()}
+async function finishImport(t,asNew){const n=normalize(t);if(asNew){n.id=DB.uid('t')}else await DB.clearPhotos(n.id);for(const i of n.items)for(const p of i.photos||[]){if(p.data){const id=asNew?DB.uid('p'):p.id;await DB.putPhoto({id,tripId:n.id,blob:await(await fetch(p.data)).blob()});p.id=id;delete p.data}}n.meta.lastBackupAt=Date.now();n.meta.modifiedAt=Math.min(n.meta.modifiedAt||0,n.meta.lastBackupAt);await DB.put(n,false);ui.panel=null;ui.msg={t:`已匯入「${esc(n.name)}」。`};route()}
 
 /* ---------- 總覽 ---------- */
 function overview(t){mem=t.members.map(m=>({...m}));cover=t.cover;pend=null;
@@ -87,7 +88,7 @@ document.addEventListener('click',async e=>{const b=e.target.closest('[data-a]')
 if(a=='imp'){$('#file').click();return}
 if(a=='pc'){ui.panel=null}else if(a=='new'){ui={panel:{k:'new'},msg:null}}else if(a=='ex'){ui={panel:{k:'exp',id},msg:null}}else if(a=='dl'){ui={panel:{k:'del',id},msg:null}}
 else if(a=='dy'){await DB.del(id);ui={panel:null,msg:{t:'已刪除。'}}}
-else if(a=='cp'){const t=await DB.get(id),n=JSON.parse(JSON.stringify(t));n.id=DB.uid('t');n.name+='（副本）';n.meta={...n.meta,createdAt:Date.now(),lastBackupAt:null};await DB.put(n);ui={panel:null,msg:{t:`已複製「${esc(t.name)}」。`}}}
+else if(a=='cp'){const t=await DB.get(id),n=JSON.parse(JSON.stringify(t));n.id=DB.uid('t');for(const i of n.items)for(const p of i.photos||[]){const r=await DB.getPhoto(p.id);if(r){const q=DB.uid('p');await DB.putPhoto({id:q,tripId:n.id,blob:r.blob});p.id=q}}n.name+='（副本）';n.meta={...n.meta,createdAt:Date.now(),lastBackupAt:null};await DB.put(n);ui={panel:null,msg:{t:`已複製「${esc(t.name)}」。`}}}
 else if(a=='pe'){const t=await DB.get(id),ph=$('[name=ph]:checked').value=='1';await doExport(t,ph,$('#fn').value.trim()||'trip.json');ui={panel:null,msg:{t:`已匯出「${esc(t.name)}」（${ph?'含照片':'不含照片'}），請到瀏覽器的下載位置查看。`}}}
 else if(a=='nok'){const n=$('#nn').value.trim(),s=$('#ns').value,en=$('#ne').value;if(!n||!s||!en){$('#ne2').textContent='請填寫名稱、出發日期與結束日期';return}if(en<s){$('#ne2').textContent='結束日期不能早於出發日期';return}
 const t=DB.blank(n,s,en);await DB.put(t);location.hash=`#/trip/${t.id}/overview`;ui.panel=null;return}
