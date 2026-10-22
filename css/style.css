@@ -1,5 +1,6 @@
 :root{--bg:#f4f2ee;--card:#fbfaf8;--ink:#3c3a37;--sub:#8a857d;--line:#dcd8d0;--accent:#7a2e2e;--chip:#e9e5dc;box-sizing:border-box}
-@media (prefers-color-scheme:dark){:root{--bg:#262522;--card:#2e2d2a;--ink:#e6e2da;--sub:#9d978d;--line:#44423d;--accent:#d9a79a;--chip:#3a3834;color-scheme:dark}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#262522;--card:#2e2d2a;--ink:#e6e2da;--sub:#9d978d;--line:#44423d;--accent:#d9a79a;--chip:#3a3834;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#262522;--card:#2e2d2a;--ink:#e6e2da;--sub:#9d978d;--line:#44423d;--accent:#d9a79a;--chip:#3a3834;color-scheme:dark}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 "Noto Sans TC","Hiragino Sans","PingFang TC","Microsoft JhengHei",sans-serif}
 .shell{display:flex;min-height:100vh}.col{flex:1;min-width:0;padding-top:env(safe-area-inset-top,0px)}

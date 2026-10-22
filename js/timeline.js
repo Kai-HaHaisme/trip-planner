@@ -24,7 +24,7 @@ const un=t.items.filter(i=>!i.date),tabs=[['all','全部天數'],...D.map((d,n)=
 let h=`<div class="tabs2">${tabs.map(([k,n])=>`<button data-t="tab" data-v="${k}" aria-pressed="${k==sel}">${n}</button>`).join('')}</div><a class="btn main addb" href="#/trip/${t.id}/item/new/${sel=='all'?'':sel}">＋ 新增行程項目</a>`;
 D.forEach((d,n)=>{if(sel!='all'&&sel!=d)return;const its=t.items.filter(i=>i.date==d),main=its.filter(i=>!i.isAlt).sort(byTime),alt=its.filter(i=>i.isAlt).sort(byTime);
 const st=t.items.filter(i=>i.category=='住宿'&&!i.isAlt&&i.checkOut&&i.date<d&&d<=i.checkOut).map(i=>`<div class="stay">${i.checkOut==d?'今天退房':'住宿中'}：${esc(i.name)}</div>`).join('');
-h+=`<section class="day"><h2>第 ${n+1} 天<small>${fmt(d)}（週${wk(d)}）</small></h2>${dayLoc(t,d)?`<div class="wx" data-wx="${d}">天氣載入中…</div>`:''}${st}${main.map(i=>icard(t,i,'n',D)).join('')||'<div class="empty">這天還沒有行程。</div>'}${alt.length?`<p class="sub">備案（不計入費用與分帳）</p>`+alt.map(i=>icard(t,i,'a',D)).join(''):''}</section>`});
+h+=`<section class="day"><h2>第 ${n+1} 天<small>${fmt(d)} <span>週${wk(d)}</span></small></h2>${dayLoc(t,d)?`<div class="wx" data-wx="${d}">天氣載入中…</div>`:''}${st}${main.map(i=>icard(t,i,'n',D)).join('')||'<div class="empty">這天還沒有行程。</div>'}${alt.length?`<p class="sub">備案（不計入費用與分帳）</p>`+alt.map(i=>icard(t,i,'a',D)).join(''):''}</section>`});
 if(sel=='all'||sel=='u')h+=`<section class="day"><h2>未排程（${un.length}）<small>不計入費用</small></h2>${un.map(i=>icard(t,i,'u',D)).join('')||'<div class="empty">沒有未排程項目。尚未決定日期的景點，可以先在「新增行程項目」把日期選成「未排程」。</div>'}</section>`;
 h+=geoFoot(t);return h}
 
