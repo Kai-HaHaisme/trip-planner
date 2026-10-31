@@ -3,13 +3,14 @@ const XC=['景點','美食','交通','住宿','購物','其他'],XCOL=['#8c7b6b'
 let ex={sk:'t',sd:1,fc:'',fp:''};const XDEF={t:1,c:1,a:-1,p:1},XLB={t:'日期時間',c:'類別',a:'金額',p:'付款人'},XLD={t:['早→晚','晚→早'],c:['分類順序','反向'],a:['大→小','小→大'],p:['旅伴順序','反向']};
 const xr=u=>u==cur.baseCurrency?1:(cur.rates[u]?.manual??cur.rates[u]?.auto??null),xv=i=>{const r=xr(i.currency);return r==null?0:i.amount*r};
 const xf=n=>Math.round(n).toLocaleString(),xn=n=>`${cur.baseCurrency} ${xf(n)}`,xsum=a=>a.reduce((s,i)=>s+xv(i),0),xmulti=()=>cur.members.length>1;
-const xcounted=()=>cur.items.filter(i=>!i.isAlt&&i.date&&i.amount>0),xused=()=>[...new Set(cur.items.map(i=>i.currency).filter(c=>c&&c!=cur.baseCurrency))];
-function expensesPage(t){return`<h1 style="margin-top:14px">費用與預算</h1><div class="mt" id="xmeta"></div><div id="xpg"><div class="cols"><div class="col2">
+const xexps=()=>cur.expenses||(cur.expenses=[]);
+const xcounted=()=>[...cur.items.filter(i=>!i.isAlt&&i.date&&i.amount>0),...xexps().filter(e=>e.amount>0).map(e=>({...e,start:null,exp:1}))],xused=()=>[...new Set([...cur.items,...xexps()].map(i=>i.currency).filter(c=>c&&c!=cur.baseCurrency))];
+function expensesPage(t){return`<h1 style="margin-top:14px">費用與預算</h1><div class="mt" id="xmeta"></div><div id="xpg"><div style="margin-top:10px"><button class="btn main" data-x="fo">＋ 記一筆臨時花費</button></div><div class="hint">旅途中臨時產生的花費（餐費、禮品等）。會一併計入總額、預算與分帳。</div><div id="xform"></div><div class="cols"><div class="col2">
 <fieldset><legend>費用統計</legend><div class="donut" id="xd"></div></fieldset>
 <fieldset><legend>預算</legend><div class="br" id="xbt"></div><div id="xbc"></div><div class="err" id="xbw" hidden></div><div class="hint">預算以主幣別（${esc(t.baseCurrency)}）設定；分類預算可留白。</div></fieldset></div>
 <div class="col2"><fieldset id="xsb"><legend>分帳</legend><div class="tbl"><table id="xmt"></table></div><div class="set" id="xst"></div><div class="hint">備案與未排程不計入分帳。外幣依下方匯率換算成主幣別後結算。</div></fieldset>
 <fieldset><legend>匯率（1 外幣 = ? ${esc(t.baseCurrency)}）</legend><div class="tbl"><table id="xrt" class="rt"></table></div><div class="hint" id="xrh"></div><div style="margin-top:8px"><button class="btn sm" data-x="rf">立即更新匯率</button></div><div class="hint">匯率資料來自 <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener">Rates By Exchange Rate API</a>，每日更新一次。手動值優先於自動值。</div></fieldset></div></div>
-<fieldset><legend>費用明細</legend><div class="hint">由時間軸自動帶入，不能在此新增；要新增或修改請回到時間軸。</div><div class="srt" id="xs"></div><div class="srt" id="xfl"></div><div class="tbl"><table id="xdt"></table></div><div class="hint" id="xex"></div></fieldset></div>`}
+<fieldset><legend>費用明細</legend><div class="hint">行程項目由時間軸自動帶入（要修改請回到時間軸）；標示「臨時」的是在這裡記錄的花費，可直接編輯。</div><div class="srt" id="xs"></div><div class="srt" id="xfl"></div><div class="tbl"><table id="xdt"></table></div><div class="hint" id="xex"></div></fieldset></div>`}
 function exInit(){const t=cur,B=t.budget;
 $('#xbt').innerHTML=`<div class="h"><span>總預算</span><input type="number" id="xbi" min="0" value="${B.total||''}" aria-label="總預算"></div><div class="tr"><i></i></div><div class="st"></div>`;
 $('#xbc').innerHTML=XC.map(c=>`<div class="br" data-c="${c}"><div class="h"><span>${c}</span><input type="number" min="0" value="${B.byCategory?.[c]||''}" aria-label="${c}預算"></div><div class="tr"><i></i></div><div class="st"></div></div>`).join('');
@@ -29,13 +30,13 @@ const tin=+$('#xbi').value||0;xbar($('#xbt'),tot,tin);let cs=0;$$('#xbc .br').fo
 $('#xbw').hidden=!(tin&&cs>tin);$('#xbw').textContent=`分類預算合計 ${xn(cs)}，超過總預算 ${xn(cs-tin)}（僅提示，不阻擋）。`;
 const used=xused();$('#xrt').innerHTML=used.length?'<tr><th>幣別</th><th class="r">自動</th><th class="r">手動覆蓋</th><th class="r">使用中</th><th></th></tr>'+used.map(u=>{const r=t.rates[u]||{},e=xr(u);return`<tr><td>${u}</td><td class="r">${r.auto!=null?+r.auto.toFixed(4):'—'}</td><td class="r"><input type="number" step="any" min="0" data-u="${u}" value="${r.manual??''}" placeholder="—" aria-label="${u}手動匯率"></td><td class="r">${e!=null?+e.toFixed(4):'—'}<span class="tag" style="margin-left:6px">${r.manual!=null?'手動':'自動'}</span></td><td class="r">${r.manual!=null?`<button class="btn sm" data-x="rs" data-u="${u}">恢復自動</button>`:''}</td></tr>`}).join(''):'<tr><td class="hint">目前沒有外幣項目，不需要匯率。</td></tr>';
 $('#xrh').textContent=used.length?(t.ratesAt?`自動匯率更新於 ${new Date(t.ratesAt).toLocaleString(LT(),{hour12:false})}（離線沿用上次的值）。`:'尚未取得自動匯率。'):'';
-/* 明細 */const kf={t:i=>0,c:i=>XC.indexOf(i.category),a:xv,p:i=>t.members.findIndex(m=>m.id==(i.split?.payer||t.members[0].id))}[ex.sk],tm=(a,b)=>(a.date+(a.start?.time||'99')).localeCompare(b.date+(b.start?.time||'99'));
+/* 明細 */const kf={t:i=>0,c:i=>XC.indexOf(i.category),a:xv,p:i=>t.members.findIndex(m=>m.id==(i.split?.payer||t.members[0].id))}[ex.sk],tm=(a,b)=>((a.date||'9999')+(a.start?.time||'98')).localeCompare((b.date||'9999')+(b.start?.time||'98'));
 if(ex.sk=='p'&&!pc)ex.sk='t';$('#xfpw').hidden=!pc;ex.fc=$('#xfc').value;ex.fp=pc?$('#xfp').value:'';
 const rows=ok.filter(i=>(!ex.fc||i.category==ex.fc)&&(!ex.fp||(i.split?.payer||t.members[0].id)==ex.fp)).sort((a,b)=>ex.sk=='t'?ex.sd*tm(a,b):(kf(a)-kf(b))*ex.sd||tm(a,b)),fl=ex.fc||ex.fp;
 $('#xs').innerHTML='<span class="hint">排序：</span>'+Object.keys(XLB).filter(x=>x!='p'||pc).map(x=>`<button data-x="s" data-k="${x}" aria-pressed="${x==ex.sk}">${XLB[x]}${x==ex.sk?'（'+XLD[x][ex.sd==XDEF[x]?0:1]+'）':''}</button>`).join('');
 $('#xfn').textContent=fl?`顯示 ${rows.length} / ${ok.length} 筆`:'';
 const pn=i=>esc(t.members.find(m=>m.id==(i.split?.payer||t.members[0].id))?.name||'');
-$('#xdt').innerHTML=`<tr><th>日期時間</th><th>項目地點</th><th>類別</th>${pc?'<th>付款人</th>':''}<th class="r">金額</th><th class="r">約合 ${esc(t.baseCurrency)}</th></tr>`+(rows.length?'':`<tr><td colspan="6" class="hint">${ok.length?'沒有符合條件的項目':'還沒有計入費用的項目。到時間軸新增行程並填入金額。'}</td></tr>`)+rows.map(i=>`<tr><td>${i.date.slice(5).replace('-','/')} ${i.start?.time||''}</td><td>${esc(i.name)}</td><td>${i.category}</td>${pc?`<td>${pn(i)}</td>`:''}<td class="r">${i.currency} ${i.amount.toLocaleString()}</td><td class="r">${i.currency==t.baseCurrency?'—':(xr(i.currency)==null?'—':xf(xv(i)))}</td></tr>`).join('')+`<tr><td colspan="${pc?4:3}"><b>${fl?'篩選結果合計':'合計'}</b></td><td></td><td class="r"><b>${xf(xsum(rows))}</b></td></tr>`;
+$('#xdt').innerHTML=`<tr><th>日期時間</th><th>項目地點</th><th>類別</th>${pc?'<th>付款人</th>':''}<th class="r">金額</th><th class="r">約合 ${esc(t.baseCurrency)}</th><th></th></tr>`+(rows.length?'':`<tr><td colspan="7" class="hint">${ok.length?'沒有符合條件的項目':'還沒有計入費用的項目。到時間軸新增行程並填入金額。'}</td></tr>`)+rows.map(i=>`<tr><td>${i.date?i.date.slice(5).replace('-','/'):'—'} ${i.start?.time||''}</td><td>${esc(i.name)}${i.exp?'<span class="tag" style="margin-left:6px">臨時</span>':''}</td><td>${i.category}</td>${pc?`<td>${pn(i)}</td>`:''}<td class="r">${i.currency} ${i.amount.toLocaleString()}</td><td class="r">${i.currency==t.baseCurrency?'—':(xr(i.currency)==null?'—':xf(xv(i)))}</td><td class="r">${i.exp?`<button class="lk" data-x="ee" data-id="${i.id}">編輯</button> <button class="lk d" data-x="ed" data-id="${i.id}">刪除</button>`:''}</td></tr>`).join('')+`<tr><td colspan="${pc?4:3}"><b>${fl?'篩選結果合計':'合計'}</b></td><td></td><td class="r"><b>${xf(xsum(rows))}</b></td><td></td></tr>`;
 const alt=t.items.filter(i=>i.isAlt&&i.amount>0),un=t.items.filter(i=>!i.isAlt&&!i.date&&i.amount>0);
 $('#xex').textContent=alt.length||un.length?`另有 ${alt.length} 個備案、${un.length} 個未排程項目（含金額者），約 ${xn(xsum([...alt,...un]))} 未計入。`:'';
 /* 分帳 */$('#xsb').hidden=!pc;if(!pc)return;const paid={},owe={};t.members.forEach(m=>{paid[m.id]=0;owe[m.id]=0});
@@ -56,3 +57,36 @@ document.addEventListener('click',async e=>{const b=e.target.closest('[data-x]')
 if(a=='s'){const k=b.dataset.k;if(k==ex.sk)ex.sd=-ex.sd;else{ex.sk=k;ex.sd=XDEF[k]}exUpdate()}
 else if(a=='rs'){cur.rates[b.dataset.u].manual=null;await DB.put(cur);exUpdate()}
 else if(a=='rf'){$('#xrh').textContent='更新中…';await fetchRates(true)}});
+
+/* ---------- 臨時花費（旅途中記一筆） ---------- */
+let xe=null;
+const xlast=()=>{try{return JSON.parse(LS('tp-lastexp-'+cur.id)||'{}')}catch(e){return{}}},xDefDate=()=>{const D=daysOf(cur),T=todayStr();return D.includes(T)?T:D[0]};
+function xFormHtml(e,msg){const t=cur,L=xlast(),multi=t.members.length>1,D=daysOf(t),cs=[...new Set([t.baseCurrency,...CURS])],s=e?.split,mode=s?.mode||(L.mode&&L.mode!='C'?L.mode:'A');xe={id:e?.id||null,shares:s?.shares||[]};
+return`${msg?`<div class="msg">${esc(msg)}</div>`:''}<div class="panel" id="xfm" style="margin-top:14px"><b>${e?'編輯臨時花費':'記一筆臨時花費'}</b>
+<div class="seg">${XC.map(c=>`<label><input type="radio" name="ecat" value="${c}" ${c==(e?.category||L.category||'其他')?'checked':''}><span>${c}</span></label>`).join('')}</div>
+<div class="g2"><label class="f" style="margin:0">項目名稱 *<input id="en" value="${esc(e?.name||'')}"></label><div style="display:grid;grid-template-columns:1.2fr 1fr;gap:8px"><label class="f" style="margin:0">金額 *<input type="number" id="ea" min="0" step="any" value="${e?.amount||''}"></label><label class="f" style="margin:0">幣別<select id="ec">${opts(cs.map(c=>[c,c]),e?.currency||L.currency||t.baseCurrency)}</select></label></div></div>
+<div class="err" id="eer" hidden></div>
+<div class="g2"><label class="f" style="margin:0">日期<select id="ed">${opts([...D.map((d,n)=>[d,`第 ${n+1} 天（${fmt(d)}）`]),['','不指定日期']],e?(e.date||''):xDefDate())}</select></label>${multi?`<label class="f" style="margin:0">付款人<select id="ep">${opts(t.members.map(m=>[m.id,m.name]),s?.payer||L.payer||t.members[0].id)}</select></label>`:''}</div>
+${multi?`<div class="f" style="margin-top:4px">分擔方式</div><div class="seg">${[['A','全員均分'],['B','指定部分人均分'],['C','每人指定金額']].map(([v,n])=>`<label><input type="radio" name="emd" value="${v}" ${v==mode?'checked':''}><span>${n}</span></label>`).join('')}</div><div id="ems"></div><div class="hint" id="esm"></div>`:''}
+<div class="r"><button class="btn sm" data-x="fc">取消</button>${e?'':'<button class="btn sm" data-x="fs" data-more="1">儲存並再記一筆</button>'}<button class="btn main sm" data-x="fs">儲存</button></div></div>`}
+function eMems(){if(!$('#ems'))return;const m=$('[name=emd]:checked').value,old={};$$('#ems .fm').forEach(r=>old[r.dataset.m]=[r.querySelector('[type=checkbox]').checked,r.querySelector('[type=number]')?.value]);
+$('#ems').innerHTML=cur.members.map(x=>{const s=xe.shares.find(y=>y.member==x.id),o=old[x.id],on=m=='A'||(o?o[0]:(s?s.included:true)),v=o?o[1]:(s?.amount??'');
+return`<div class="fm" data-m="${x.id}"><input type="checkbox" aria-label="${esc(x.name)}" ${on?'checked':''} ${m!='B'?'disabled':''} ${m=='C'?'hidden':''}><span class="n">${esc(x.name)}</span>${m=='C'?`<input type="number" min="0" step="any" value="${v}" aria-label="${esc(x.name)}的金額">`:'<span class="a"></span>'}</div>`}).join('');eCalc()}
+function eCalc(){if(!$('#ems'))return true;const m=$('[name=emd]:checked').value,a=+$('#ea').value||0,rows=$$('#ems .fm');
+if(m=='C'){const s=rows.reduce((x,r)=>x+(+r.querySelector('[type=number]').value||0),0);$('#esm').innerHTML=`已分配 ${s} / ${a}`+(Math.abs(s-a)>.001?`<span class="err">（差 ${+(a-s).toFixed(2)}）</span>`:' ✓');return Math.abs(s-a)<=.001}
+const on=rows.filter(r=>r.querySelector('[type=checkbox]').checked);rows.forEach(r=>r.querySelector('.a').textContent=on.includes(r)&&a?`${+(a/on.length).toFixed(2)} ${$('#ec').value}`:'');$('#esm').innerHTML=on.length?'':'<span class="err">請至少選擇 1 位分擔者</span>';return on.length>0}
+const eOpen=(e,msg)=>{$('#xform').innerHTML=xFormHtml(e,msg);eMems();$('#xform').scrollIntoView({block:'center'});$('#en').focus()};
+async function eSave(more){const t=cur,n=$('#en').value.trim(),a=+$('#ea').value,er=$('#eer'),multi=t.members.length>1;
+if(!n){er.textContent='請輸入項目名稱';er.hidden=false;return}if(!(a>0)){er.textContent='請輸入大於 0 的金額';er.hidden=false;return}if(multi&&!eCalc())return;er.hidden=true;
+const mode=multi?$('[name=emd]:checked').value:'A',rows=$$('#ems .fm'),old=xexps().find(e=>e.id==xe.id),now=Date.now();
+const e={id:old?.id||DB.uid('e'),name:n,category:$('[name=ecat]:checked').value,date:$('#ed').value||null,amount:a,currency:$('#ec').value,createdAt:old?.createdAt||now,updatedAt:now};
+if(multi)e.split={payer:$('#ep').value,mode,shares:rows.map(r=>({member:r.dataset.m,included:r.querySelector('[type=checkbox]').checked,amount:mode=='C'?+r.querySelector('[type=number]').value||0:null}))};
+if(old)t.expenses[t.expenses.indexOf(old)]=e;else xexps().push(e);
+LSet('tp-lastexp-'+t.id,JSON.stringify({payer:e.split?.payer,currency:e.currency,mode,category:e.category}));await DB.put(t);
+const msg=`${old?'已更新':'已新增'}「${n}」。`;if(more)eOpen(null,msg);else $('#xform').innerHTML=`<div class="msg">${esc(msg)}</div>`;exUpdate();fetchRates(false)}
+document.addEventListener('click',async e=>{const b=e.target.closest('[data-x]');if(!b||!$('#xpg'))return;const a=b.dataset.x,id=b.dataset.id,x=id?xexps().find(i=>i.id==id):null;
+if(a=='fo')eOpen(null);else if(a=='ee'&&x)eOpen(x);else if(a=='fc')$('#xform').innerHTML='';else if(a=='fs')eSave(!!b.dataset.more);
+else if(a=='ed'&&x){$('#xform').innerHTML=`<div class="panel w" style="margin-top:14px">刪除「${esc(x.name)}」？<div class="r"><button class="btn sm" data-x="fc">取消</button><button class="btn sm d" data-x="edy" data-id="${x.id}">確認刪除</button></div></div>`;$('#xform').scrollIntoView({block:'center'})}
+else if(a=='edy'&&x){cur.expenses.splice(cur.expenses.indexOf(x),1);await DB.put(cur);$('#xform').innerHTML=`<div class="msg">已刪除「${esc(x.name)}」。</div>`;exUpdate()}});
+document.addEventListener('change',e=>{if(!$('#xfm'))return;if(e.target.name=='emd')eMems();else if(e.target.id=='ec')eCalc()});
+document.addEventListener('input',e=>{if(!$('#xfm'))return;if(e.target.closest('#ems')||e.target.id=='ea')eCalc()});
