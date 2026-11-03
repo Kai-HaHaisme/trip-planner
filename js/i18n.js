@@ -14,7 +14,7 @@ function tx(n){const cur=n.nodeValue,st=OT.get(n),o=st&&st[1]===cur?st[0]:cur;if
 function at(el){let m=OA.get(el);for(const a of AT){if(!el.hasAttribute(a))continue;const cur=el.getAttribute(a);m=m||{};const st=m[a],o=st&&st[1]===cur?st[0]:cur,t=LANG=='zh-TW'?o:tr(o);if(t!==cur)el.setAttribute(a,t);m[a]=[o,t]}if(m)OA.set(el,m)}
 function walk(r){if(r.nodeType==3){tx(r);return}if(r.nodeType!=1)return;const w=document.createTreeWalker(r,NodeFilter.SHOW_TEXT);let n;while(n=w.nextNode())tx(n);[r,...r.querySelectorAll('[placeholder],[aria-label],[title]')].forEach(at)}
 new MutationObserver(rs=>{if(LANG=='zh-TW')return;for(const r of rs){if(r.type=='childList')r.addedNodes.forEach(walk);else if(r.type=='characterData')tx(r.target);else at(r.target)}}).observe(document.documentElement,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:AT});
-function setLang(l){LANG=l;LSet('tp-lang',l);buildDict();document.documentElement.lang=l=='zh-TW'?'zh-Hant':l;walk(document.body);document.title=tr('旅遊規劃');if(typeof route=='function')route()}
+function setLang(l){LANG=l;LSet('tp-lang',l);buildDict();document.documentElement.lang=l=='zh-TW'?'zh-Hant':l;walk(document.body);document.title='Trip';if(typeof route=='function')route()}
 const applyTheme=v=>{if(v=='auto'||!v)delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=v};
 function uiSettings(){const l=$('#lang');if(l)l.value=LANG;const th=$('#theme');if(th)th.value=LS('tp-theme')||'auto';const b=$('#inst');if(!b)return;
 const sa=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
@@ -22,4 +22,4 @@ b.innerHTML=sa?'已安裝，目前正以 App 模式執行。':(DEFER?'<button cl
 document.addEventListener('change',e=>{if(e.target.id=='lang')setLang(e.target.value);if(e.target.id=='theme'){LSet('tp-theme',e.target.value);applyTheme(e.target.value)}});
 document.addEventListener('click',async e=>{if(e.target.id=='instb'&&DEFER){DEFER.prompt();await DEFER.userChoice;DEFER=null;uiSettings()}});
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();DEFER=e;uiSettings()});
-applyTheme(LS('tp-theme'));buildDict();if(LANG!='zh-TW'){document.documentElement.lang=LANG;walk(document.body);document.title=tr('旅遊規劃')}
+applyTheme(LS('tp-theme'));buildDict();if(LANG!='zh-TW'){document.documentElement.lang=LANG;walk(document.body);document.title='Trip'}

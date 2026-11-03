@@ -15,7 +15,7 @@ async function route(){const p=location.hash.slice(2).split('/');
 if(p[0]=='trip'){cur=await DB.get(p[1]);if(!cur){location.hash='#/';return}if(p[2]=='item'){nav(cur,'timeline');$('#main').innerHTML=formPage(cur,p[3],p[4]);formInit();scrollTo(0,0);return}
 const pg=PAGES.find(x=>x[0]==p[2])?p[2]:'overview';nav(cur,pg);
 $('#main').innerHTML=(pg=='overview'?overview(cur):pg=='timeline'?timelinePage(cur):pg=='expenses'?expensesPage(cur):pg=='packing'?packingPage(cur):pg=='wishlist'?wishlistPage(cur):stub(cur,pg));if(pg=='overview')daysUI();if(pg=='expenses')exInit();if(pg=='timeline')tlAfter();if(pg=='packing')pkRender();if(pg=='wishlist')wlRender();scrollTo(0,0)}
-else{cur=null;$('#side').hidden=true;$('#tabs').hidden=true;$('#top').innerHTML='<h1>旅遊規劃</h1>';$('#main').innerHTML=await tripsPage()}}
+else{cur=null;$('#side').hidden=true;$('#tabs').hidden=true;$('#top').innerHTML='<h1>Trip</h1>';$('#main').innerHTML=await tripsPage()}}
 function nav(t,pg){const l=PAGES.map(([k,n])=>`<a href="#/trip/${t.id}/${k}" class="${k==pg?'on':''}">${n}</a>`).join('');
 $('#side').hidden=false;$('#tabs').hidden=false;$('#side').innerHTML=`<a href="#/" style="padding-left:0">← 我的旅行</a><div class="tn">${esc(t.name)}</div><div class="mt" style="margin-bottom:12px">${fmt(t.start)} – ${fmt(t.end)}</div>${l}`;
 $('#tabs').innerHTML=l;$('#top').innerHTML=`<a href="#/" aria-label="回旅行列表" style="text-decoration:none">←</a><h1>${esc(t.name)}</h1>`}
@@ -49,7 +49,7 @@ if(inc.packing&&inc.wishlist){t.meta.lastBackupAt=Date.now();await DB.put(t,fals
 function normalize(x){const b=DB.blank(x.name||'未命名',x.start,x.end);return{...b,...x,destination:{...b.destination,...x.destination},budget:{...b.budget,...x.budget},meta:{...b.meta,...x.meta},members:x.members?.length?x.members:b.members,
 packingCategories:x.packingCategories?.length?x.packingCategories:b.packingCategories}}
 async function importObj(o){ui.msg=null;const t=o?.trip;
-if(!o||o.app!=='trip-planner'||!t||!t.name||!t.start||!t.end){ui.msg={e:1,t:'這不是旅遊規劃的匯出檔，無法匯入。'};return route()}
+if(!o||o.app!=='trip-planner'||!t||!t.name||!t.start||!t.end){ui.msg={e:1,t:'這不是 Trip 的匯出檔，無法匯入。'};return route()}
 if(o.version>1){ui.msg={e:1,t:'這個檔案來自較新版本，請先更新 App 再匯入。'};return route()}
 const ex=await DB.get(t.id);if(ex||t.packing?.length||t.wishlist?.length){ui.panel={k:'conf',o,ex:!!ex};return route()}await finishImport(t,false,{})}
 async function finishImport(t,asNew,inc){const old=asNew?null:await DB.get(t.id),n=normalize(t);if(asNew)n.id=DB.uid('t');else await DB.clearPhotos(n.id);
@@ -85,7 +85,7 @@ const moved=t.items.filter(i=>i.date&&(i.date<a||i.date>b)).length;
 if(moved&&!ok){$('#warn').innerHTML=`<div class="panel w" style="margin-top:14px">新的日期範圍會讓 ${moved} 個行程項目落在範圍之外，它們將移到「未排程」區（不會刪除，暫時不計入費用）。要繼續嗎？<div class="r"><button class="btn sm" data-a="wn">返回修改</button><button class="btn main" data-a="sy">確認並儲存</button></div></div>`;$('#warn').scrollIntoView({block:'center'});return}
 $('#warn').innerHTML='';t.items.forEach(i=>{if(i.date&&(i.date<a||i.date>b)){i.date=null;i.checkOut=null}});
 mem.forEach((m,i)=>m.name=nm[i]);const ids=new Set(mem.map(m=>m.id));
-t.items.forEach(i=>{if(i.split){if(!ids.has(i.split.payer))i.split.payer=mem[0].id;i.split.shares=(i.split.shares||[]).filter(s=>ids.has(s.member))}});
+[...t.items,...(t.expenses||[])].forEach(i=>{if(i.split){if(i.split.payer!='self'&&!ids.has(i.split.payer))i.split.payer=mem[0].id;i.split.shares=(i.split.shares||[]).filter(s=>ids.has(s.member))}});
 if(t.baseCurrency!=$('#cur').value){t.rates={};t.ratesAt=0}
 Object.assign(t,{name,start:a,end:b,description:$('#desc').value,cover,baseCurrency:$('#cur').value,members:mem.map(m=>({...m}))});{const dn=$('#dest').value.trim();if(ovDest)t.destination={name:dn,lat:ovDest.lat,lng:ovDest.lng};else if(dn!=t.destination.name)t.destination={name:dn,lat:null,lng:null}}
 await DB.put(t);nav(t,'overview');$('#sm').innerHTML='<div class="msg">已儲存。</div>';setTimeout(()=>$('#sm')&&($('#sm').innerHTML=''),2500)}
